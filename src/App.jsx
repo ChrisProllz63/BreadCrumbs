@@ -160,6 +160,7 @@ export default function InvestigationGraph() {
   const [showAddEdge, setShowAddEdge] = useState(false);
   const [showAddFinding, setShowAddFinding] = useState(false);
   const [showFindings, setShowFindings] = useState(false);
+  const [showEntityList, setShowEntityList] = useState(false);
   const [showFindingsOnTimeline, setShowFindingsOnTimeline] = useState(false);
   const [edgeSourceId, setEdgeSourceId] = useState(null);
   const [editingFinding, setEditingFinding] = useState(null);
@@ -172,6 +173,8 @@ export default function InvestigationGraph() {
   const panStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
   const graphWidth = 2000;
   const graphHeight = 2000;
+  const MIN_ZOOM = 0.2;
+  const MAX_ZOOM = 3;
 
   const { runSimulation } = useForceLayout(nodes, edges, positions, setPositions, graphWidth, graphHeight);
 
@@ -343,7 +346,46 @@ export default function InvestigationGraph() {
   const handleWheel = (e) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setZoom((z) => Math.min(3, Math.max(0.2, z * delta)));
+    setZoom((z) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z * delta)));
+  };
+
+  const zoomIn = () => {
+    setZoom((z) => Math.min(MAX_ZOOM, z * 1.2));
+  };
+
+  const zoomOut = () => {
+    setZoom((z) => Math.max(MIN_ZOOM, z / 1.2));
+  };
+
+  const resetZoom = () => {
+    setZoom(1);
+  };
+
+  const recenterOnNodes = () => {
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const nodePositions = nodes
+      .map((n) => positions[n.id])
+      .filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y));
+
+    if (nodePositions.length === 0) {
+      setPan({ x: 0, y: 0 });
+      return;
+    }
+
+    const minX = Math.min(...nodePositions.map((p) => p.x));
+    const maxX = Math.max(...nodePositions.map((p) => p.x));
+    const minY = Math.min(...nodePositions.map((p) => p.y));
+    const maxY = Math.max(...nodePositions.map((p) => p.y));
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const rect = svg.getBoundingClientRect();
+    setPan({
+      x: rect.width / 2 - centerX * zoom,
+      y: rect.height / 2 - centerY * zoom,
+    });
   };
 
   const handleNodeClick = (nodeId) => {
@@ -360,6 +402,16 @@ export default function InvestigationGraph() {
 
   const handleEdgeClick = (edgeId, e) => {
     e.stopPropagation();
+    setSelectedEdge(edgeId);
+    setSelectedNode(null);
+  };
+
+  const handleSelectNodeFromList = (nodeId) => {
+    setSelectedNode(nodeId);
+    setSelectedEdge(null);
+  };
+
+  const handleSelectEdgeFromList = (edgeId) => {
     setSelectedEdge(edgeId);
     setSelectedNode(null);
   };
@@ -446,15 +498,21 @@ export default function InvestigationGraph() {
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {view === "graph" && (
           <>
-            <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: 12, left: 12, zIndex: 10, display: "flex", gap: 6 }}>
-                <button onClick={() => setShowAddNode(true)} style={{ ...btnPrimary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit" }}>+ Node</button>
-                <button onClick={() => {
-                  if (nodes.length < 2) { alert("Add at least 2 nodes first."); return; }
-                  setEdgeSourceId("__picking__");
-                }} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit" }}>+ Edge</button>
-                <button onClick={() => setShowFindings(!showFindings)} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit", background: showFindings ? "#333" : "transparent" }}>Findings {findings.length > 0 && `(${findings.length})`}</button>
+            <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "row" }}>
+              <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", top: 12, left: 12, zIndex: 10, display: "flex", gap: 6 }}>
+                  <button onClick={() => setShowAddNode(true)} style={{ ...btnPrimary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit" }}>+ Node</button>
+                  <button onClick={() => {
+                    if (nodes.length < 2) { alert("Add at least 2 nodes first."); return; }
+                    setEdgeSourceId("__picking__");
+                  }} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit" }}>+ Edge</button>
+                  <button onClick={() => setShowFindings(!showFindings)} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit", background: showFindings ? "#333" : "transparent" }}>Findings {findings.length > 0 && `(${findings.length})`}</button>
+                  <button onClick={() => setShowEntityList((v) => !v)} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit", background: showEntityList ? "#333" : "transparent" }}>Listes</button>
                 <button onClick={runSimulation} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit" }}>Re-layout</button>
+                <button onClick={zoomIn} style={{ ...btnSecondary, fontSize: 11, padding: "6px 10px", minWidth: 32, fontFamily: "inherit" }} title="Zoom in">+</button>
+                <button onClick={zoomOut} style={{ ...btnSecondary, fontSize: 11, padding: "6px 10px", minWidth: 32, fontFamily: "inherit" }} title="Zoom out">-</button>
+                <button onClick={resetZoom} style={{ ...btnSecondary, fontSize: 11, padding: "6px 10px", fontFamily: "inherit" }} title="Reset zoom to 100%">100%</button>
+                <button onClick={recenterOnNodes} style={{ ...btnSecondary, fontSize: 11, padding: "6px 10px", fontFamily: "inherit" }} title="Recenter on nodes">Center</button>
               </div>
 
               {edgeSourceId && (
@@ -540,15 +598,15 @@ export default function InvestigationGraph() {
                 </g>
               </svg>
 
-              <div style={{ position: "absolute", bottom: 12, right: 12, color: "#444", fontSize: 11 }}>{Math.round(zoom * 100)}%</div>
-            </div>
+                <div style={{ position: "absolute", bottom: 12, right: 12, color: "#444", fontSize: 11 }}>{Math.round(zoom * 100)}%</div>
+              </div>
 
-            {selectedNode && (() => {
-              const node = nodes.find((n) => n.id === selectedNode);
-              if (!node) return null;
-              const connEdges = edges.filter((e) => e.source === node.id || e.target === node.id);
-              return (
-                <div style={{ width: 300, borderLeft: "1px solid #2A2A3C", background: "#1A1A28", padding: 16, overflowY: "auto", flexShrink: 0 }}>
+              {selectedNode && (() => {
+                const node = nodes.find((n) => n.id === selectedNode);
+                if (!node) return null;
+                const connEdges = edges.filter((e) => e.source === node.id || e.target === node.id);
+                return (
+                  <div style={{ width: 300, borderLeft: "1px solid #2A2A3C", background: "#1A1A28", padding: 16, overflowY: "auto", flexShrink: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                     <h3 style={{ margin: 0, color: getNodeColor(node.type), fontSize: 14 }}>Node Details</h3>
                     <button onClick={() => setSelectedNode(null)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 16 }}>✕</button>
@@ -580,62 +638,131 @@ export default function InvestigationGraph() {
                   <div style={{ marginTop: 20, display: "flex", gap: 8 }}>
                     <button onClick={() => deleteNode(node.id)} style={{ ...btnDanger, fontSize: 11, fontFamily: "inherit" }}>Delete Node</button>
                   </div>
-                </div>
-              );
-            })()}
-
-            {selectedEdge && (() => {
-              const edge = edges.find((e) => e.id === selectedEdge);
-              if (!edge) return null;
-              const srcNode = nodes.find((n) => n.id === edge.source);
-              const tgtNode = nodes.find((n) => n.id === edge.target);
-              return (
-                <div style={{ width: 300, borderLeft: "1px solid #2A2A3C", background: "#1A1A28", padding: 16, overflowY: "auto", flexShrink: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3 style={{ margin: 0, color: "#FFB74D", fontSize: 14 }}>Edge Details</h3>
-                    <button onClick={() => setSelectedEdge(null)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 16 }}>✕</button>
                   </div>
-                  <label style={labelStyle}>Source</label>
-                  <div style={{ padding: "6px 10px", background: "#222236", borderRadius: 4, color: getNodeColor(srcNode?.type), fontSize: 12, marginBottom: 4 }}>{srcNode?.label || "?"}</div>
-                  <label style={labelStyle}>Target</label>
-                  <div style={{ padding: "6px 10px", background: "#222236", borderRadius: 4, color: getNodeColor(tgtNode?.type), fontSize: 12, marginBottom: 4 }}>{tgtNode?.label || "?"}</div>
-                  <label style={labelStyle}>Relationship Label</label>
-                  <input value={edge.label} onChange={(e) => updateEdge(edge.id, { label: e.target.value })} style={{ ...inputStyle, fontFamily: "inherit" }} />
-                  <label style={labelStyle}>Timestamp</label>
-                  <input value={edge.timestamp || ""} onChange={(e) => updateEdge(edge.id, { timestamp: e.target.value })} placeholder="YYYY-MM-DD HH:MM:SS" style={{ ...inputStyle, fontFamily: "inherit" }} />
-                  <label style={labelStyle}>Directionality</label>
-                  <select value={edge.directionality || "uni"} onChange={(e) => updateEdge(edge.id, { directionality: e.target.value })} style={{ ...selectStyle, fontFamily: "inherit" }}>
-                    <option value="uni">Unidirectional →</option>
-                    <option value="bi">Bidirectional ↔</option>
-                    <option value="none">Non-directional —</option>
-                  </select>
-                  <div style={{ marginTop: 20 }}>
-                    <button onClick={() => deleteEdge(edge.id)} style={{ ...btnDanger, fontSize: 11, fontFamily: "inherit" }}>Delete Edge</button>
-                  </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
 
-            {showFindings && !selectedNode && !selectedEdge && (
-              <div style={{ width: 300, borderLeft: "1px solid #2A2A3C", background: "#1A1A28", padding: 16, overflowY: "auto", flexShrink: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                  <h3 style={{ margin: 0, color: "#90A4AE", fontSize: 14 }}>Notable Findings</h3>
-                  <button onClick={() => setShowFindings(false)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 16 }}>✕</button>
-                </div>
-                <button onClick={() => setShowAddFinding(true)} style={{ ...btnPrimary, fontSize: 11, width: "100%", marginBottom: 12, fontFamily: "inherit" }}>+ Add Finding</button>
-                {findings.length === 0 && <p style={{ color: "#555", fontSize: 12, textAlign: "center", marginTop: 20 }}>No findings yet.</p>}
-                {findings.map((f) => (
-                  <div key={f.id} style={{ padding: 10, margin: "6px 0", background: "#222236", borderRadius: 6, borderLeft: "3px solid #90A4AE" }}>
-                    <div style={{ fontSize: 12, color: "#ccc", marginBottom: 4 }}>{f.text}</div>
-                    {f.timestamp && <div style={{ fontSize: 10, color: "#666" }}>{f.timestamp}</div>}
-                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                      <button onClick={() => setEditingFinding(f)} style={{ background: "none", border: "none", color: "#4FC3F7", cursor: "pointer", fontSize: 11, padding: 0 }}>Edit</button>
-                      <button onClick={() => deleteFinding(f.id)} style={{ background: "none", border: "none", color: "#E57373", cursor: "pointer", fontSize: 11, padding: 0 }}>Delete</button>
+              {selectedEdge && (() => {
+                const edge = edges.find((e) => e.id === selectedEdge);
+                if (!edge) return null;
+                const srcNode = nodes.find((n) => n.id === edge.source);
+                const tgtNode = nodes.find((n) => n.id === edge.target);
+                return (
+                  <div style={{ width: 300, borderLeft: "1px solid #2A2A3C", background: "#1A1A28", padding: 16, overflowY: "auto", flexShrink: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                      <h3 style={{ margin: 0, color: "#FFB74D", fontSize: 14 }}>Edge Details</h3>
+                      <button onClick={() => setSelectedEdge(null)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 16 }}>✕</button>
+                    </div>
+                    <label style={labelStyle}>Source</label>
+                    <div style={{ padding: "6px 10px", background: "#222236", borderRadius: 4, color: getNodeColor(srcNode?.type), fontSize: 12, marginBottom: 4 }}>{srcNode?.label || "?"}</div>
+                    <label style={labelStyle}>Target</label>
+                    <div style={{ padding: "6px 10px", background: "#222236", borderRadius: 4, color: getNodeColor(tgtNode?.type), fontSize: 12, marginBottom: 4 }}>{tgtNode?.label || "?"}</div>
+                    <label style={labelStyle}>Relationship Label</label>
+                    <input value={edge.label} onChange={(e) => updateEdge(edge.id, { label: e.target.value })} style={{ ...inputStyle, fontFamily: "inherit" }} />
+                    <label style={labelStyle}>Timestamp</label>
+                    <input value={edge.timestamp || ""} onChange={(e) => updateEdge(edge.id, { timestamp: e.target.value })} placeholder="YYYY-MM-DD HH:MM:SS" style={{ ...inputStyle, fontFamily: "inherit" }} />
+                    <label style={labelStyle}>Directionality</label>
+                    <select value={edge.directionality || "uni"} onChange={(e) => updateEdge(edge.id, { directionality: e.target.value })} style={{ ...selectStyle, fontFamily: "inherit" }}>
+                      <option value="uni">Unidirectional →</option>
+                      <option value="bi">Bidirectional ↔</option>
+                      <option value="none">Non-directional —</option>
+                    </select>
+                    <div style={{ marginTop: 20 }}>
+                      <button onClick={() => deleteEdge(edge.id)} style={{ ...btnDanger, fontSize: 11, fontFamily: "inherit" }}>Delete Edge</button>
                     </div>
                   </div>
+                );
+              })()}
+              {showFindings && !selectedNode && !selectedEdge && (
+                <div style={{ width: 300, borderLeft: "1px solid #2A2A3C", background: "#1A1A28", padding: 16, overflowY: "auto", flexShrink: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                    <h3 style={{ margin: 0, color: "#90A4AE", fontSize: 14 }}>Notable Findings</h3>
+                    <button onClick={() => setShowFindings(false)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 16 }}>✕</button>
+                  </div>
+                  <button onClick={() => setShowAddFinding(true)} style={{ ...btnPrimary, fontSize: 11, width: "100%", marginBottom: 12, fontFamily: "inherit" }}>+ Add Finding</button>
+                  {findings.length === 0 && <p style={{ color: "#555", fontSize: 12, textAlign: "center", marginTop: 20 }}>No findings yet.</p>}
+                  {findings.map((f) => (
+                    <div key={f.id} style={{ padding: 10, margin: "6px 0", background: "#222236", borderRadius: 6, borderLeft: "3px solid #90A4AE" }}>
+                      <div style={{ fontSize: 12, color: "#ccc", marginBottom: 4 }}>{f.text}</div>
+                      {f.timestamp && <div style={{ fontSize: 10, color: "#666" }}>{f.timestamp}</div>}
+                      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                        <button onClick={() => setEditingFinding(f)} style={{ background: "none", border: "none", color: "#4FC3F7", cursor: "pointer", fontSize: 11, padding: 0 }}>Edit</button>
+                        <button onClick={() => deleteFinding(f.id)} style={{ background: "none", border: "none", color: "#E57373", cursor: "pointer", fontSize: 11, padding: 0 }}>Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showEntityList && (
+              <div style={{ width: 320, borderLeft: "1px solid #2A2A3C", background: "#1A1A28", padding: 16, overflowY: "auto", flexShrink: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <h3 style={{ margin: 0, color: "#4FC3F7", fontSize: 14 }}>Nodes & Edges</h3>
+                  <button onClick={() => setShowEntityList(false)} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", fontSize: 16 }}>✕</button>
+                </div>
+
+                <div style={{ color: "#777", fontSize: 11, marginBottom: 10 }}>{nodes.length} nodes · {edges.length} edges</div>
+
+                <div style={{ color: "#9AA", fontSize: 12, marginBottom: 6 }}>Nodes</div>
+                {nodes.length === 0 && <div style={{ color: "#555", fontSize: 11, marginBottom: 12 }}>No nodes yet.</div>}
+                {nodes.map((node) => (
+                  <button
+                    key={node.id}
+                    onClick={() => handleSelectNodeFromList(node.id)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      marginBottom: 6,
+                      padding: "8px 10px",
+                      background: selectedNode === node.id ? "#4FC3F7" : "#222236",
+                      border: selectedNode === node.id ? "1px solid #4FC3F7" : "1px solid #333",
+                      borderRadius: 6,
+                      color: selectedNode === node.id ? "#111" : "#CCC",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                      fontSize: 11,
+                      fontWeight: selectedNode === node.id ? 600 : 400,
+                    }}
+                  >
+                    <span style={{ marginRight: 8 }}>●</span>
+                    {node.label}
+                  </button>
                 ))}
+
+                <div style={{ color: "#9AA", fontSize: 12, marginTop: 12, marginBottom: 6 }}>Edges</div>
+                {edges.length === 0 && <div style={{ color: "#555", fontSize: 11 }}>No edges yet.</div>}
+                {edges.map((edge) => {
+                  const src = nodes.find((n) => n.id === edge.source);
+                  const tgt = nodes.find((n) => n.id === edge.target);
+                  return (
+                    <button
+                      key={edge.id}
+                      onClick={() => handleSelectEdgeFromList(edge.id)}
+                      style={{
+                        width: "100%",
+                        textAlign: "left",
+                        marginBottom: 6,
+                        padding: "8px 10px",
+                        background: selectedEdge === edge.id ? "#FFB74D" : "#222236",
+                        border: selectedEdge === edge.id ? "1px solid #FFB74D" : "1px solid #333",
+                        borderRadius: 6,
+                        color: selectedEdge === edge.id ? "#111" : "#CCC",
+                        cursor: "pointer",
+                        fontFamily: "inherit",
+                        fontSize: 11,
+                        fontWeight: selectedEdge === edge.id ? 600 : 400,
+                      }}
+                    >
+                      <span style={{ color: getNodeColor(src?.type) }}>{src?.label || "?"}</span>
+                      <span style={{ color: "#666" }}> → </span>
+                      <span style={{ color: getNodeColor(tgt?.type) }}>{tgt?.label || "?"}</span>
+                      <span style={{ color: "#888" }}> · {edge.label}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
+            </div>
           </>
         )}
 

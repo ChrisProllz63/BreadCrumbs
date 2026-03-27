@@ -1,0 +1,216 @@
+{
+  "nodes": [
+    {
+      "id": "node_1",
+      "label": "admin@company.com",
+      "type": "email",
+      "timestamp": "2024-03-15 09:30:00",
+      "notes": "Primary admin account - initial compromise vector"
+    },
+    {
+      "id": "node_2",
+      "label": "192.168.1.50",
+      "type": "ip",
+      "timestamp": "2024-03-15 09:45:00",
+      "notes": "Admin workstation - source IP of malicious activity"
+    },
+    {
+      "id": "node_3",
+      "label": "ADMIN-WS-001",
+      "type": "host",
+      "timestamp": "2024-03-15 10:00:00",
+      "notes": "Windows 10 workstation - high integrity device"
+    },
+    {
+      "id": "node_4",
+      "label": "john.doe",
+      "type": "user",
+      "timestamp": "2024-03-15 08:00:00",
+      "notes": "Administrator - account used for initial access"
+    },
+    {
+      "id": "node_5",
+      "label": "C:\\malware.exe",
+      "type": "file",
+      "timestamp": "2024-03-15 11:15:00",
+      "notes": "Suspicious executable - detected by EDR"
+    },
+    {
+      "id": "node_6",
+      "label": "explorer.exe",
+      "type": "process",
+      "timestamp": "2024-03-15 11:20:00",
+      "notes": "Windows explorer process - parent of malware execution"
+    },
+    {
+      "id": "node_7",
+      "label": "evil.com",
+      "type": "domain",
+      "timestamp": "2024-03-15 11:30:00",
+      "notes": "C2 server - external command and control"
+    },
+    {
+      "id": "node_8",
+      "label": "185.220.101.45",
+      "type": "ip",
+      "timestamp": "2024-03-15 11:35:00",
+      "notes": "Evil.com resolved IP - Tor exit node"
+    },
+    {
+      "id": "node_9",
+      "label": "HKLM\\Software\\Malware",
+      "type": "registry",
+      "timestamp": "2024-03-15 12:00:00",
+      "notes": "Registry persistence mechanism"
+    },
+    {
+      "id": "node_10",
+      "label": "backup@company.com",
+      "type": "email",
+      "timestamp": "2024-03-15 13:00:00",
+      "notes": "Backup admin account - secondary compromise"
+    },
+    {
+      "id": "node_11",
+      "label": "db-server-01",
+      "type": "host",
+      "timestamp": "2024-03-15 13:30:00",
+      "notes": "Database server - lateral movement target"
+    },
+    {
+      "id": "node_12",
+      "label": "svcaccount",
+      "type": "user",
+      "timestamp": "2024-03-15 13:45:00",
+      "notes": "Service account - used for privilege escalation"
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge_1",
+      "source": "node_4",
+      "target": "node_2",
+      "label": "logged-in-from",
+      "timestamp": "2024-03-15 09:30:00",
+      "directionality": "uni"
+    },
+    {
+      "id": "edge_2",
+      "source": "node_2",
+      "target": "node_3",
+      "label": "belongs-to",
+      "timestamp": "2024-03-15 10:00:00",
+      "directionality": "uni"
+    },
+    {
+      "id": "edge_3",
+      "source": "node_1",
+      "target": "node_4",
+      "label": "owns-account",
+      "timestamp": "2024-03-15 08:00:00",
+      "directionality": "bi"
+    },
+    {
+      "id": "edge_4",
+      "source": "node_6",
+      "target": "node_5",
+      "label": "executed",
+      "timestamp": "2024-03-15 11:20:00",
+      "directionality": "uni"
+    },
+    {
+      "id": "edge_5",
+      "source": "node_5",
+      "target": "node_7",
+      "label": "connects-to",
+      "timestamp": "2024-03-15 11:30:00",
+      "directionality": "bi"
+    },
+    {
+      "id": "edge_6",
+      "source": "node_7",
+      "target": "node_8",
+      "label": "resolves-to",
+      "timestamp": "2024-03-15 11:35:00",
+      "directionality": "uni"
+    },
+    {
+      "id": "edge_7",
+      "source": "node_5",
+      "target": "node_9",
+      "label": "modifies",
+      "timestamp": "2024-03-15 12:00:00",
+      "directionality": "uni"
+    },
+    {
+      "id": "edge_8",
+      "source": "node_3",
+      "target": "node_11",
+      "label": "lateral-movement",
+      "timestamp": "2024-03-15 13:30:00",
+      "directionality": "uni"
+    },
+    {
+      "id": "edge_9",
+      "source": "node_10",
+      "target": "node_11",
+      "label": "authenticated-to",
+      "timestamp": "2024-03-15 13:45:00",
+      "directionality": "uni"
+    },
+    {
+      "id": "edge_10",
+      "source": "node_12",
+      "target": "node_9",
+      "label": "scheduled",
+      "timestamp": "2024-03-15 14:00:00",
+      "directionality": "none"
+    }
+  ],
+  "findings": [
+    {
+      "id": "finding_1",
+      "text": "Initial compromise through admin email phishing attack - user clicked malicious link at 09:30",
+      "timestamp": "2024-03-15 09:30:00"
+    },
+    {
+      "id": "finding_2",
+      "text": "Malware execution detected with SHA256: a1b2c3d4e5f6... - matches known Emotet variant",
+      "timestamp": "2024-03-15 11:20:00"
+    },
+    {
+      "id": "finding_3",
+      "text": "C2 communication established to known Tor exit node - persistent connection on port 443",
+      "timestamp": "2024-03-15 11:35:00"
+    },
+    {
+      "id": "finding_4",
+      "text": "Registry persistence mechanism detected - scheduled task created for malware re-execution",
+      "timestamp": "2024-03-15 12:00:00"
+    },
+    {
+      "id": "finding_5",
+      "text": "Lateral movement attempt detected to database server using compromised backup admin account",
+      "timestamp": "2024-03-15 13:45:00"
+    },
+    {
+      "id": "finding_6",
+      "text": "Impact assessment: 347 user accounts compromised, 15 GB of sensitive data accessed",
+      "timestamp": "2024-03-15 15:00:00"
+    }
+  ],
+  "positions": {
+    "node_1": { "x": 100, "y": 150, "vx": 0, "vy": 0, "pinned": false },
+    "node_2": { "x": 200, "y": 200, "vx": 0, "vy": 0, "pinned": false },
+    "node_3": { "x": 300, "y": 150, "vx": 0, "vy": 0, "pinned": false },
+    "node_4": { "x": 50, "y": 100, "vx": 0, "vy": 0, "pinned": false },
+    "node_5": { "x": 400, "y": 300, "vx": 0, "vy": 0, "pinned": false },
+    "node_6": { "x": 350, "y": 250, "vx": 0, "vy": 0, "pinned": false },
+    "node_7": { "x": 500, "y": 350, "vx": 0, "vy": 0, "pinned": false },
+    "node_8": { "x": 600, "y": 400, "vx": 0, "vy": 0, "pinned": false },
+    "node_9": { "x": 450, "y": 150, "vx": 0, "vy": 0, "pinned": false },
+    "node_10": { "x": 150, "y": 50, "vx": 0, "vy": 0, "pinned": false },
+    "node_11": { "x": 250, "y": 450, "vx": 0, "vy": 0, "pinned": false },
+    "node_12": { "x": 350, "y": 400, "vx": 0, "vy": 0, "pinned": false }
+  }
+}
