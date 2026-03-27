@@ -50,3 +50,37 @@ MIT
 ## Contributing
 
 Issues and pull requests are welcome. If you use BreadCrumbs in your workflow and have ideas for improvement, open an issue.
+
+## Changelog (Embedded)
+
+This README includes both:
+
+- the existing changelog content already present in CHANGELOG.md
+- the newly generated changelog entry for the latest iteration
+
+### New Entry - March 2026 (Sources & Timeline)
+
+- Added optional Source field for all node types
+- Added optional Source field for all edges
+- Added dual-source dropdown sections: Windows and Linux
+- Added Source display in Timeline for node and edge events
+- Replaced Linux source dataset with Linux-specific artifacts
+- Translated Linux source entries to English
+- Kept data persistent through localStorage
+
+### Existing Changelog Content (From Current CHANGELOG)
+
+The existing changelog documents the following baseline enhancements:
+
+- Advanced zoom controls:
+  - Zoom in
+  - Zoom out
+  - Reset to 100%
+  - Recenter on nodes
+- Dedicated Nodes & Edges list panel with interactive selection
+- Fix for node details rendering while list panel is visible
+- UI improvements for side-panel coexistence and workflow speed
+- Test dataset availability in sample-data.json
+- UX, performance, and compatibility notes
+
+For the full detailed record, see CHANGELOG.md.

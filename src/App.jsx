@@ -13,6 +13,31 @@ const NODE_TYPES = [
   { value: "custom", label: "Custom", color: "#90A4AE" },
 ];
 
+const SOURCES = {
+  windows: [
+    { category: "System Logs", source: "Event Logs (Security, System, Application)", description: "Native Windows logs (event ID, user, action)." },
+    { category: "User Logs", source: "User Profile (AppData, RecentDocs, Registry)", description: "History of opened files and user registry keys." },
+    { category: "Processes", source: "Prefetch, WMI (Win32_Process), ETW", description: "Execution traces, startup time, and process relationships." },
+    { category: "Network", source: "Firewall Logs, NetFlow, PCAP, DNS Cache", description: "Inbound/outbound connections and DNS queries." },
+    { category: "Files", source: "MFT ($MFT), USN Journal, $LogFile", description: "File metadata (creation, modification, deletion)." },
+    { category: "Persistence", source: "Registry (Run, Services), Scheduled Tasks, WMI", description: "Malware persistence mechanisms." },
+    { category: "Memory", source: "Memory Dump (Volatility, Rekall)", description: "Running processes, network connections, and RAM artifacts." },
+    { category: "Applications", source: "Browser Logs (Chrome, Edge, Firefox), Office (MRU), Slack/Teams", description: "Browsing history, downloads, and recent documents." },
+    { category: "Security", source: "Windows Defender, EDR (CrowdStrike, SentinelOne)", description: "Security alerts and malware detections." },
+  ],
+  linux: [
+    { category: "System Logs", source: "/var/log/auth.log, /var/log/syslog, journalctl", description: "Authentications, system messages, and services." },
+    { category: "Processes", source: "/proc, ps, auditd, systemd journals", description: "Process list, arguments, and execution time." },
+    { category: "Network", source: "/var/log/iptables, /var/log/nginx/apache, PCAP, netstat", description: "Network connections, HTTP requests, and firewall rules." },
+    { category: "Files", source: "inode, ext4 journal, /var/log/fsck", description: "File metadata and file system modifications." },
+    { category: "Users", source: "/home/*/.bash_history, /var/log/wtmp, lastlog", description: "Executed commands and login history." },
+    { category: "Persistence", source: "cron, systemd services, /etc/passwd, /etc/crontab", description: "Scheduled tasks and automatically started services." },
+    { category: "Memory", source: "Memory dump (LiME, AVML), /proc/[pid]/mem", description: "Running processes, network connections, and RAM artifacts." },
+    { category: "Applications", source: "/var/log/apt/yum, /var/log/secure, application logs", description: "Updates, installations, and specific logs (SSH, Docker, etc.)." },
+    { category: "Security", source: "auditd, fail2ban, EDR logs (Osquery, Wazuh)", description: "Security alerts and intrusion attempts." },
+  ],
+};
+
 const getNodeColor = (type) =>
   NODE_TYPES.find((t) => t.value === type)?.color || "#90A4AE";
 
@@ -164,6 +189,8 @@ export default function InvestigationGraph() {
   const [showFindingsOnTimeline, setShowFindingsOnTimeline] = useState(false);
   const [edgeSourceId, setEdgeSourceId] = useState(null);
   const [editingFinding, setEditingFinding] = useState(null);
+  const [selectedNodeOsType, setSelectedNodeOsType] = useState("windows");
+  const [selectedEdgeOsType, setSelectedEdgeOsType] = useState("windows");
 
   const svgRef = useRef(null);
   const [dragging, setDragging] = useState(null);
@@ -435,6 +462,7 @@ export default function InvestigationGraph() {
             targetLabel: tgtNode.label,
             edgeLabel: e.label,
             arrow,
+                      source: e.sourceArtifact,
           });
         }
       }
@@ -448,6 +476,7 @@ export default function InvestigationGraph() {
           label: n.label,
           nodeType: n.type,
           notes: n.notes,
+                    source: n.source,
         });
       }
     });
@@ -507,7 +536,7 @@ export default function InvestigationGraph() {
                     setEdgeSourceId("__picking__");
                   }} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit" }}>+ Edge</button>
                   <button onClick={() => setShowFindings(!showFindings)} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit", background: showFindings ? "#333" : "transparent" }}>Findings {findings.length > 0 && `(${findings.length})`}</button>
-                  <button onClick={() => setShowEntityList((v) => !v)} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit", background: showEntityList ? "#333" : "transparent" }}>Listes</button>
+                  <button onClick={() => setShowEntityList((v) => !v)} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit", background: showEntityList ? "#333" : "transparent" }}>Lists</button>
                 <button onClick={runSimulation} style={{ ...btnSecondary, fontSize: 11, padding: "6px 12px", fontFamily: "inherit" }}>Re-layout</button>
                 <button onClick={zoomIn} style={{ ...btnSecondary, fontSize: 11, padding: "6px 10px", minWidth: 32, fontFamily: "inherit" }} title="Zoom in">+</button>
                 <button onClick={zoomOut} style={{ ...btnSecondary, fontSize: 11, padding: "6px 10px", minWidth: 32, fontFamily: "inherit" }} title="Zoom out">-</button>
@@ -621,6 +650,19 @@ export default function InvestigationGraph() {
                   <input value={node.timestamp || ""} onChange={(e) => updateNode(node.id, { timestamp: e.target.value })} placeholder="YYYY-MM-DD HH:MM:SS" style={{ ...inputStyle, fontFamily: "inherit" }} />
                   <label style={labelStyle}>Notes</label>
                   <textarea value={node.notes || ""} onChange={(e) => updateNode(node.id, { notes: e.target.value })} rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
+                  <label style={labelStyle}>Source (optional)</label>
+                  <select value={selectedNodeOsType} onChange={(e) => setSelectedNodeOsType(e.target.value)} style={{ ...selectStyle, fontFamily: "inherit", marginBottom: 8 }}>
+                    <option value="windows">Windows</option>
+                    <option value="linux">Linux</option>
+                  </select>
+                  <select value={node.source || ""} onChange={(e) => updateNode(node.id, { source: e.target.value || null })} style={{ ...selectStyle, fontFamily: "inherit" }}>
+                    <option value="">Select a source...</option>
+                    {SOURCES[selectedNodeOsType].map((item, idx) => (
+                      <option key={idx} value={item.source}>
+                        {item.category} — {item.source}
+                      </option>
+                    ))}
+                  </select>
                   {connEdges.length > 0 && (
                     <>
                       <label style={{ ...labelStyle, marginTop: 20 }}>Connected Edges ({connEdges.length})</label>
@@ -666,6 +708,19 @@ export default function InvestigationGraph() {
                       <option value="uni">Unidirectional →</option>
                       <option value="bi">Bidirectional ↔</option>
                       <option value="none">Non-directional —</option>
+                    </select>
+                    <label style={labelStyle}>Source (optional)</label>
+                    <select value={selectedEdgeOsType} onChange={(e) => setSelectedEdgeOsType(e.target.value)} style={{ ...selectStyle, fontFamily: "inherit", marginBottom: 8 }}>
+                      <option value="windows">Windows</option>
+                      <option value="linux">Linux</option>
+                    </select>
+                    <select value={edge.sourceArtifact || ""} onChange={(e) => updateEdge(edge.id, { sourceArtifact: e.target.value || null })} style={{ ...selectStyle, fontFamily: "inherit" }}>
+                      <option value="">Select a source...</option>
+                      {SOURCES[selectedEdgeOsType].map((item, idx) => (
+                        <option key={idx} value={item.source}>
+                          {item.category} — {item.source}
+                        </option>
+                      ))}
                     </select>
                     <div style={{ marginTop: 20 }}>
                       <button onClick={() => deleteEdge(edge.id)} style={{ ...btnDanger, fontSize: 11, fontFamily: "inherit" }}>Delete Edge</button>
@@ -805,6 +860,7 @@ export default function InvestigationGraph() {
                         <span style={{ color: getNodeColor(item.sourceType), fontWeight: 600 }}>{item.sourceLabel}</span>
                         <span style={{ color: "#888" }}> {item.arrow} {item.edgeLabel} {item.arrow} </span>
                         <span style={{ color: getNodeColor(item.targetType), fontWeight: 600 }}>{item.targetLabel}</span>
+                                            {item.source && <div style={{ color: "#888", fontSize: 10, marginTop: 6 }}>📌 {item.source}</div>}
                       </div>
                     )}
                     {item.type === "node" && (
@@ -812,6 +868,7 @@ export default function InvestigationGraph() {
                         <span style={{ display: "inline-block", padding: "1px 6px", borderRadius: 3, background: getNodeColor(item.nodeType) + "22", color: getNodeColor(item.nodeType), fontSize: 10, marginRight: 6 }}>{item.nodeType}</span>
                         <span style={{ color: "#E0E0E0" }}>{item.label}</span>
                         {item.notes && <div style={{ color: "#777", fontSize: 11, marginTop: 4 }}>{item.notes}</div>}
+                                              {item.source && <div style={{ color: "#888", fontSize: 10, marginTop: 4 }}>📌 {item.source}</div>}
                       </div>
                     )}
                     {item.type === "finding" && (
@@ -843,6 +900,8 @@ function AddNodeModal({ onAdd, onClose }) {
   const [label, setLabel] = useState("");
   const [timestamp, setTimestamp] = useState("");
   const [notes, setNotes] = useState("");
+  const [osType, setOsType] = useState("windows");
+  const [source, setSource] = useState("");
 
   return (
     <Modal title="Add Node" onClose={onClose}>
@@ -856,9 +915,22 @@ function AddNodeModal({ onAdd, onClose }) {
       <input value={timestamp} onChange={(e) => setTimestamp(e.target.value)} placeholder="YYYY-MM-DD HH:MM:SS" style={{ ...inputStyle, fontFamily: "inherit" }} />
       <label style={labelStyle}>Notes (optional)</label>
       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical", fontFamily: "inherit" }} />
+      <label style={labelStyle}>Source (optional)</label>
+      <select value={osType} onChange={(e) => setOsType(e.target.value)} style={{ ...selectStyle, fontFamily: "inherit", marginBottom: 8 }}>
+        <option value="windows">Windows</option>
+        <option value="linux">Linux</option>
+      </select>
+      <select value={source} onChange={(e) => setSource(e.target.value)} style={{ ...selectStyle, fontFamily: "inherit" }}>
+        <option value="">Select a source...</option>
+        {SOURCES[osType].map((item, idx) => (
+          <option key={idx} value={item.source}>
+            {item.category} — {item.source}
+          </option>
+        ))}
+      </select>
       <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
         <button onClick={onClose} style={{ ...btnSecondary, fontFamily: "inherit" }}>Cancel</button>
-        <button onClick={() => { if (!label.trim()) return; onAdd({ type, label: label.trim(), timestamp: timestamp || null, notes: notes || null }); }} style={{ ...btnPrimary, fontFamily: "inherit", opacity: label.trim() ? 1 : 0.4 }}>Add Node</button>
+        <button onClick={() => { if (!label.trim()) return; onAdd({ type, label: label.trim(), timestamp: timestamp || null, notes: notes || null, source: source || null }); }} style={{ ...btnPrimary, fontFamily: "inherit", opacity: label.trim() ? 1 : 0.4 }}>Add Node</button>
       </div>
     </Modal>
   );
@@ -869,6 +941,8 @@ function AddEdgeModal({ source, target, nodes, onAdd, onClose }) {
   const [label, setLabel] = useState("");
   const [timestamp, setTimestamp] = useState("");
   const [directionality, setDirectionality] = useState("uni");
+  const [osType, setOsType] = useState("windows");
+  const [sourceArtifact, setSourceArtifact] = useState("");
   const srcNode = nodes.find((n) => n.id === source);
   const tgtNode = nodes.find((n) => n.id === target);
 
@@ -889,9 +963,22 @@ function AddEdgeModal({ source, target, nodes, onAdd, onClose }) {
         <option value="bi">Bidirectional ↔</option>
         <option value="none">Non-directional —</option>
       </select>
+      <label style={labelStyle}>Source (optional)</label>
+      <select value={osType} onChange={(e) => setOsType(e.target.value)} style={{ ...selectStyle, fontFamily: "inherit", marginBottom: 8 }}>
+        <option value="windows">Windows</option>
+        <option value="linux">Linux</option>
+      </select>
+      <select value={sourceArtifact} onChange={(e) => setSourceArtifact(e.target.value)} style={{ ...selectStyle, fontFamily: "inherit" }}>
+        <option value="">Select a source...</option>
+        {SOURCES[osType].map((item, idx) => (
+          <option key={idx} value={item.source}>
+            {item.category} — {item.source}
+          </option>
+        ))}
+      </select>
       <div style={{ display: "flex", gap: 8, marginTop: 20, justifyContent: "flex-end" }}>
         <button onClick={onClose} style={{ ...btnSecondary, fontFamily: "inherit" }}>Cancel</button>
-        <button onClick={() => { if (!label.trim()) return; onAdd({ source, target, label: label.trim(), timestamp: timestamp || null, directionality }); }} style={{ ...btnPrimary, fontFamily: "inherit", opacity: label.trim() ? 1 : 0.4 }}>Add Edge</button>
+        <button onClick={() => { if (!label.trim()) return; onAdd({ source, target, label: label.trim(), timestamp: timestamp || null, directionality, sourceArtifact: sourceArtifact || null }); }} style={{ ...btnPrimary, fontFamily: "inherit", opacity: label.trim() ? 1 : 0.4 }}>Add Edge</button>
       </div>
     </Modal>
   );

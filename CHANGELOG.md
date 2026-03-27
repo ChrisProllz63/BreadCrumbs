@@ -1,5 +1,50 @@
 # Changelog - BreadCrumbs Investigation Graph
 
+## Version Mise a Jour - Mars 2026 (Sources & Timeline)
+
+Modifications complementaires ajoutees sur la version modifiee.
+
+---
+
+## Nouvelles Fonctionnalites
+
+### 1. Champ Source ajoute aux nodes
+- Ajout d'un champ optionnel Source pour chaque node.
+- Selecteur a 2 sections: Windows et Linux.
+- Source persistante via localStorage.
+
+### 2. Champ Source ajoute aux edges
+- Ajout d'un champ optionnel Source pour chaque edge.
+- Selecteur a 2 sections: Windows et Linux.
+- La valeur est stockee dans sourceArtifact.
+
+### 3. Sources visibles dans la timeline
+- Les items Node affichent leur Source si renseignee.
+- Les items Edge affichent leur Source si renseignee.
+- Affichage conditionnel pour ne pas surcharger la timeline.
+
+### 4. Traductions et alignement des donnees
+- Traduction des libelles en anglais pour l'UI et les donnees Windows.
+- Remplacement des sources Linux avec un jeu d'artefacts Linux dedie.
+- Traduction des champs Linux en anglais:
+  - categories
+  - sources
+  - descriptions
+
+### 5. Correctifs annexes
+- Harmonisation du bouton Lists dans la toolbar.
+- Verification de build/syntaxe sans erreurs sur src/App.jsx.
+
+---
+
+## Fichiers Impactes
+
+- src/App.jsx
+- README.md
+- CHANGELOG.md
+
+---
+
 ## Version Modifiée - Mars 2026
 
 Modifications apportées au code original de [oaboelrous/BreadCrumbs](https://github.com/oaboelrous/BreadCrumbs.git)
